@@ -41,7 +41,7 @@ void RedBlackTree::remove(int number)
 		cout << "红黑树为空！不能删除" << endl;
 	else
 	{
-		remove(number, header->right);
+		remove(number, header);
 		cout << "删除成功！" << endl;
 	}
 }
@@ -207,7 +207,7 @@ void RedBlackTree::remove(int number, RedBlackNode *& t)   //t是实际的根结
 	pair<int, Color> returnValue = findDeleteNode(number,nullptr, t);
 	if (returnValue.second == BLACK)               //只有当实际删除的结点为黑色的时候才需要调整
 	{
-		t->color = RED;					//先使根结点变红  确保循环正确进行
+		t->color = RED;					//先使假根结点变红  确保循环正确进行
 		nullNode->number = returnValue.first;
 		nullNode->color = BLACK;    //保证current可以到达退出条件和起始状态下的的循环必定可以正常进行
 		grand = parent = current = header;  //初始化 此时各指针指向假根
@@ -217,10 +217,7 @@ void RedBlackTree::remove(int number, RedBlackNode *& t)   //t是实际的根结
 			parent = current;
 			returnValue.first < current->number? brother = parent->right, current = parent->left: (brother = parent->left,current = parent->right);       //这个括号非常重要
 			if(current->left->color==RED||current->right->color==RED)    //当current指向的结点的儿子中有红色结点时先进行下一步
-			{
 				repairTree1(returnValue.first);   //调整函数1
-				continue;          //满足要求直接进行下一步循环
-			}
 			else                   //当current指向的结点的儿子没有红色结点时根据其兄弟结点的颜色分为三种情况（加上对称的共有5种）单旋与双旋
 				repairTree2();   //调整函数2
 		}
@@ -230,7 +227,7 @@ void RedBlackTree::remove(int number, RedBlackNode *& t)   //t是实际的根结
 	else
 		parent->right = nullNode;
 	delete current;
-	t->color = BLACK;    //保证根为黑色
+	t->color = BLACK;    //保证假根为黑色
 }
 
 void RedBlackTree::makeEmpty(RedBlackNode * t)
@@ -246,6 +243,7 @@ void RedBlackTree::makeEmpty(RedBlackNode * t)
 
 void RedBlackTree::repairTree1(int number)      //当current有红色儿子时  分为三类情况（需要调整：2种 不需要调整：1种）
 {
+	grand = parent;
 	parent = current;
 	current = number < current->number ? current->left : current->right;
 	if (current->color != RED)    //如果此的current指向的结点不为红这需要旋转调整
@@ -253,17 +251,25 @@ void RedBlackTree::repairTree1(int number)      //当current有红色儿子时  
 		if (parent->right->color == RED)    //current的右兄弟为红色
 		{
 			rotateWithRightChild(parent);
+			if (parent->number > grand->number)   //重新构成链接
+				grand->right = parent;
+			else
+				grand->left = parent;
 			swap(parent->color, parent->left->color);           //颜色对换
-			current = parent = parent->left;     //旋转后将current parent置于正确位置
-
+			current = parent->left;   //旋转后将current置于正确位置
 		}
 		else                              //current的左兄弟为红色
 		{
-			rotateWithLeftChild(parent);
+			parent = rotate(number, grand);
+			if (parent->number > grand->number)   //重新构成链接
+				grand->right = parent;
+			else
+				grand->left = parent;
 			swap(parent->color, parent->right->color);      //颜色对换
-			current = parent = parent->right;     //旋转后将current parent置于正确位置
+			current = parent->right;   //旋转后将current置于正确位置
 		}
 	}
+	nullNode->color = BLACK;     //保证空结点颜色为黑
 }
 
 void RedBlackTree::repairTree2()      //curent的没有红色儿子时   根据其兄弟结点的颜色分为三种情况（加上对称的共有5种）单旋与双旋
@@ -319,6 +325,7 @@ void RedBlackTree::repairTree2()      //curent的没有红色儿子时   根据�
 		parent->color = BLACK;
 		current->color = brother->color = RED;
 	}
+	nullNode->color = BLACK;     //保证空结点颜色为黑
 }
 
 pair<int,RedBlackTree::Color> RedBlackTree::findDeleteNode(int number,RedBlackNode*lastStep, RedBlackNode * t)
@@ -420,8 +427,6 @@ void RedBlackTree::visualPrintTree(int deep, int number,int count)
 		int temp = getLength(deep - currentDeep, count);    //计算该层树边的长度
 		int sp = count+1;   //同树中边的间隔
 		int interval = sp + (temp - 1) * 2;   //同层中一棵树中结点的间隔
-		if (currentDeep == 3)
-			int i = 3;
 		while (temp--)
 		{
 			int i = 0;
